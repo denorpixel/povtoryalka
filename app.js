@@ -28,10 +28,29 @@ var btnRetryNo = document.getElementById('btn-retry-no');
 var treeDiv = document.getElementById('file-tree');
 var pgnUpload = document.getElementById('pgn-upload');
 
+// ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ФИГУР С ВИКИПЕДИИ (Работает на старых Android)
+function getPieceUrl(piece) {
+    var wikiPieces = {
+        'wP': 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
+        'wN': 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
+        'wB': 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
+        'wR': 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
+        'wQ': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
+        'wK': 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
+        'bP': 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
+        'bN': 'https://upload.wikimedia.org/wikipedia/commons/e/ea/Chess_ndt45.svg',
+        'bB': 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
+        'bR': 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
+        'bQ': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
+        'bK': 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg'
+    };
+    return wikiPieces[piece];
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   board = Chessboard('board', {
     position: 'start',
-    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+    pieceTheme: getPieceUrl,
     draggable: true,
     onDragStart: onDragStart,
     onDrop: onDrop,
@@ -79,7 +98,7 @@ function handleFileUpload(e) {
                 if (filesProcessed === files.length) {
                     localStorage.setItem('savedPgns', JSON.stringify(savedPgns));
                     renderTree();
-                    pgnUpload.value = ''; // очистка
+                    pgnUpload.value = ''; 
                 }
             };
             reader.readAsText(file);
@@ -88,7 +107,7 @@ function handleFileUpload(e) {
 }
 
 function deleteFile(fileName, event) {
-    event.stopPropagation(); // чтобы не кликался сам файл
+    event.stopPropagation(); 
     if (confirm('Удалить ' + fileName + '?')) {
         delete savedPgns[fileName];
         delete progressDB[fileName];
