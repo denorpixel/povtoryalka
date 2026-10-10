@@ -1,4 +1,4 @@
-var CACHE_NAME = 'povtoryalka-cache-v1';
+var CACHE_NAME = 'povtoryalka-cache-v2';
 var urlsToCache = [
   './index.html',
   './app.js',
