@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Повторялка</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+  <script src="https://unpkg.com/@mliebelt/pgn-parser/lib/pgn-parser.js"></script>
+  <style>
+    body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; font-family: sans-serif; overflow: hidden; }
+    #sidebar { width: 300px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column; }
+    #sidebar-header { padding: 15px; background: #2d2d30; font-weight: bold; font-size: 1.1em; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* Стилизация кнопки загрузки файлов */
+    .file-upload-label { cursor: pointer; background: #4ec9b0; color: #1e1e1e; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; }
+    #pgn-upload { display: none; }
+    
+    #file-tree { padding: 10px; overflow-y: auto; flex: 1; }
+    .tree-item { padding: 12px 10px; margin: 4px 0; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; }
+    .tree-item:active { background-color: #37373d; }
+    .item-name { display: flex; align-items: center; gap: 8px; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .item-status { font-size: 0.85em; color: #888; }
+    .file.active { background-color: #04395e; color: #fff; }
+    .btn-delete { background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.8em; }
+    
+    #main { flex: 1; display: flex; padding: 10px; gap: 15px; align-items: flex-start; justify-content: center; overflow-y: auto; }
+    #board-container { width: 100%; max-width: 600px; }
+    
+    #right-panel { flex: 1; max-width: 350px; display: flex; flex-direction: column; gap: 10px; }
+    #status-text { font-size: 1.2em; font-weight: bold; color: #4ec9b0; text-align: center; min-height: 40px; }
+    #move-comment { display: none; background-color: #2b3a42; padding: 10px; border-left: 5px solid #4ec9b0; border-radius: 4px; font-size: 1.1em; max-height: 150px; overflow-y: auto; }
+    
+    #controls { display: flex; flex-direction: column; gap: 8px; }
+    .btn-row { display: flex; gap: 8px; }
+    button { flex: 1; padding: 15px; background-color: #0e639c; color: white; border: none; border-radius: 5px; font-size: 1.1em; font-weight: bold; }
+    button:disabled { background-color: #333; color: #666; }
+    #btn-hint { background-color: #cca700; color: #1e1e1e; }
+    
+    #stats-box { background: #2d2d30; padding: 10px; border-radius: 5px; border: 1px solid #444; }
+    .stat-line { display: flex; justify-content: space-between; font-size: 1em; margin-bottom: 5px; }
+    .stat-val-err { color: #ff6b6b; font-weight: bold; }
+    .stat-val-hint { color: #cca700; font-weight: bold; }
+    
+    #moves-history { flex: 1; background: #252526; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 1.1em; max-height: 200px; overflow-y: auto; }
+    
+    #end-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 100; }
+    .modal-content { background: #252526; padding: 30px; border-radius: 10px; text-align: center; border: 1px solid #555; width: 90%; max-width: 400px; }
+    #modal-title { color: #4ec9b0; font-size: 1.5em; margin-top: 0; }
+    .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px;}
+    #btn-retry-yes { background-color: #28a745; }
+    #btn-retry-no { background-color: #dc3545; }
+
+    .white-1e1d7 { background-color: #dce3eb !important; color: #6982a6 !important; }
+    .black-3c85d { background-color: #6982a6 !important; color: #dce3eb !important; }
+
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      #sidebar { width: 100%; height: 30vh; border-right: none; border-bottom: 1px solid #333; }
+      #main { flex-direction: column; align-items: center; }
+      #right-panel { max-width: 100%; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <div id="sidebar-header">
+       <span>Дебюты</span>
+       <label class="file-upload-label">
+           + PGN
+           <input type="file" id="pgn-upload" accept=".pgn" multiple>
+       </label>
+    </div>
+    <div id="file-tree"></div>
+  </div>
+  
+  <div id="main">
+    <div id="board-container">
+      <div id="board"></div>
+      <div id="end-modal">
+        <div class="modal-content">
+          <h3 id="modal-title">Линия пройдена!</h3>
+          <div id="modal-stats"></div>
+          <div class="modal-buttons">
+            <button id="btn-retry-yes">Дальше</button>
+            <button id="btn-retry-no" style="display: none;">Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="right-panel">
+        <div id="status-text">Выберите файл</div>
+        <div id="move-comment"></div> 
+        <div id="stats-box">
+            <div class="stat-line"><span>Ошибки:</span> <span id="val-err" class="stat-val-err">0</span></div>
+            <div class="stat-line"><span>Подсказки:</span> <span id="val-hint" class="stat-val-hint">0</span></div>
+        </div>
+        <div id="controls">
+            <div class="btn-row">
+                <button id="btn-start" disabled>Заново</button>
+                <button id="btn-hint" disabled>💡 Подсказка</button>
+            </div>
+        </div>
+        <div id="moves-history"></div>
+    </div>
+  </div>
+  
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
