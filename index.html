@@ -19,8 +19,8 @@
       if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Файл не загружен сервером: ' + name + '</p>'; }
     }
   </script>
-  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=5" onerror="scriptErr('CSS доски')">
-  <script src="pgn-parser.js?v=5" onerror="scriptErr('pgn-parser.js')"></script>
+  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=6" onerror="scriptErr('CSS доски')">
+  <script src="pgn-parser.js?v=6" onerror="scriptErr('pgn-parser.js')"></script>
   <style>
     #sys-debug { display: none; background: #c0392b; color: white; padding: 15px; font-family: monospace; z-index: 10000; position: fixed; top: 0; left: 0; right: 0; font-size: 14px; max-height: 40vh; overflow-y: auto;}
     body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; font-family: sans-serif; overflow: hidden; }
@@ -28,7 +28,6 @@
     #sidebar { width: 300px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
     #sidebar-header { padding: 12px; background: #2d2d30; border-bottom: 1px solid #333; flex-shrink: 0; }
     
-    /* Жесткая верстка шапки для старых Android */
     .header-top { display: block; overflow: hidden; margin-bottom: 5px; }
     .header-title { float: left; font-size: 1.1em; font-weight: bold; color: #fff; margin-top: 6px; }
     .btn-toggle-pgn { float: right; background: #4ec9b0; color: #1e1e1e; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9em; margin: 0; }
@@ -79,15 +78,19 @@
     .white-1e1d7 { background-color: #dce3eb !important; color: #6982a6 !important; }
     .black-3c85d { background-color: #6982a6 !important; color: #dce3eb !important; }
 
+    /* Железобетонная блочная верстка для старых Android */
     @media (max-width: 768px) {
-      body { flex-direction: column; }
-      #sidebar { width: 100%; max-height: 25vh; border-right: none; border-bottom: 1px solid #333; overflow-y: auto; flex-shrink: 0; }
-      #main { flex-direction: column; align-items: center; padding: 15px 10px; gap: 20px; }
-      #board-container { width: 100%; max-width: 90vw; margin-bottom: 25px; flex-shrink: 0; } 
+      body { display: block; height: auto; overflow: auto; background-color: #1e1e1e; }
       
-      #right-panel { max-width: 100%; width: 100%; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; margin-bottom: 20px; }
+      #sidebar { display: block; width: 100%; max-height: 30vh; border-right: none; border-bottom: 2px solid #000; overflow-y: auto; }
       
-      #status-text { order: 1; margin-bottom: 5px; }
+      #main { display: block; width: 100%; padding: 15px 10px; box-sizing: border-box; }
+      
+      #board-container { display: block; width: 100%; max-width: 95vw; margin: 0 auto 20px auto; }
+      
+      #right-panel { display: flex; flex-direction: column; max-width: 100%; width: 100%; gap: 12px; margin: 0 auto; }
+      
+      #status-text { order: 1; }
       #stats-box { order: 2; padding: 12px; }
       #controls { order: 3; }
       #move-comment { order: 4; }
@@ -151,10 +154,10 @@
     </div>
   </div>
   
-  <script src="jquery-3.6.0.min.js?v=5" onerror="scriptErr('jquery')"></script>
-  <script src="chessboard-1.0.0.min.js?v=5" onerror="scriptErr('chessboard')"></script>
-  <script src="chess.min.js?v=5" onerror="scriptErr('chess.js')"></script>
-  <script src="app.js?v=5" onerror="scriptErr('app.js')"></script>
+  <script src="jquery-3.6.0.min.js?v=6" onerror="scriptErr('jquery')"></script>
+  <script src="chessboard-1.0.0.min.js?v=6" onerror="scriptErr('chessboard')"></script>
+  <script src="chess.min.js?v=6" onerror="scriptErr('chess.js')"></script>
+  <script src="app.js?v=6" onerror="scriptErr('app.js')"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(err) {
