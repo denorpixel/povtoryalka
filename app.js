@@ -9,6 +9,7 @@ var hintCount = 0;
 var progressDB = {}; 
 var savedPgns = {}; 
 var activeFilePath = '';
+var activeFileColor = 'w';
 var isForcedRepeat = false; 
 var currentDisplayComments = [];
 var fullPgnTree = [];
@@ -26,7 +27,9 @@ var modalStats = document.getElementById('modal-stats');
 var btnRetryYes = document.getElementById('btn-retry-yes');
 var btnRetryNo = document.getElementById('btn-retry-no');
 var treeDiv = document.getElementById('file-tree');
-var pgnUpload = document.getElementById('pgn-upload');
+
+var pgnUploadW = document.getElementById('pgn-upload-w');
+var pgnUploadB = document.getElementById('pgn-upload-b');
 
 document.addEventListener('DOMContentLoaded', function() {
     board = Chessboard('board', {
@@ -49,30 +52,38 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     btnHint.addEventListener('click', showHint);
     
-    pgnUpload.addEventListener('change', handleFileUpload);
+    pgnUploadW.addEventListener('change', function(e) { handleFileUpload(e, 'w'); });
+    pgnUploadB.addEventListener('change', function(e) { handleFileUpload(e, 'b'); });
 });
 
 function loadDatabase() {
     try {
         var db = localStorage.getItem('progressDB');
         if (db && db !== "") { progressDB = JSON.parse(db); }
-    } catch (e) {
-        progressDB = {};
-    }
+    } catch (e) { progressDB = {}; }
     
     try {
         var pgns = localStorage.getItem('savedPgns');
-        if (pgns && pgns !== "") { savedPgns = JSON.parse(pgns); }
-    } catch (e) {
-        savedPgns = {};
-    }
+        if (pgns && pgns !== "") {
+            var parsed = JSON.parse(pgns);
+            for (var key in parsed) {
+                // Автоматическая миграция старых файлов в новые папки
+                if (typeof parsed[key] === 'string') {
+                    var isBlack = (key.toLowerCase().indexOf('черными') !== -1 || key.toLowerCase().indexOf('black') !== -1);
+                    savedPgns[key] = { content: parsed[key], folder: isBlack ? 'b' : 'w' };
+                } else {
+                    savedPgns[key] = parsed[key];
+                }
+            }
+        }
+    } catch (e) { savedPgns = {}; }
 }
 
 function saveDatabase() {
     localStorage.setItem('progressDB', JSON.stringify(progressDB));
 }
 
-function handleFileUpload(e) {
+function handleFileUpload(e, targetFolderColor) {
     var files = e.target.files;
     if (files.length === 0) return;
     
@@ -82,12 +93,12 @@ function handleFileUpload(e) {
             var reader = new FileReader();
             reader.onload = function(evt) {
                 var content = evt.target.result;
-                savedPgns[file.name] = content;
+                savedPgns[file.name] = { content: content, folder: targetFolderColor };
                 filesProcessed++;
                 if (filesProcessed === files.length) {
                     localStorage.setItem('savedPgns', JSON.stringify(savedPgns));
                     renderTree();
-                    pgnUpload.value = ''; // очистка
+                    e.target.value = ''; // очистка поля загрузки
                 }
             };
             reader.readAsText(file);
@@ -96,7 +107,7 @@ function handleFileUpload(e) {
 }
 
 function deleteFile(fileName, event) {
-    event.stopPropagation(); // чтобы не кликался сам файл
+    event.stopPropagation(); 
     if (confirm('Удалить ' + fileName + '?')) {
         delete savedPgns[fileName];
         delete progressDB[fileName];
@@ -126,56 +137,86 @@ function renderTree() {
     var fileNames = Object.keys(savedPgns);
     
     if (fileNames.length === 0) {
-        treeDiv.innerHTML = '<div style="color:#888; padding: 10px;">Нажмите + PGN, чтобы добавить файлы</div>';
+        treeDiv.innerHTML = '<div style="color:#888; padding: 10px; text-align: center; font-size: 0.95em;">Нажмите кнопки сверху, чтобы добавить дебюты</div>';
         return;
     }
 
-    fileNames.forEach(function(fileName) {
-        var el = document.createElement('div');
-        el.className = 'tree-item file';
-        
-        var fileStats = progressDB[fileName];
-        var fileStatus = 'Новый';
-        var icon = '⚪';
-        
-        if (fileStats && fileStats.variants) {
-            var passedToday = true;
-            var oldestDate = getTodayStr();
-            var keys = Object.keys(fileStats.variants);
-            
-            for (var i = 0; i < keys.length; i++) {
-                var varData = fileStats.variants[keys[i]];
-                var lastP = varData.lastPassed;
-                if (lastP !== getTodayStr()) passedToday = false;
-                if (!lastP) oldestDate = null; 
-                else if (oldestDate && lastP < oldestDate) oldestDate = lastP;
-            }
-            
-            if (keys.length > 0) {
-                if (passedToday) { icon = '🟢'; fileStatus = 'Сдан'; } 
-                else { icon = '🔴'; fileStatus = oldestDate ? getDaysAgoStr(oldestDate) : 'Есть новые'; }
-            }
-        }
+    var whiteFiles = fileNames.filter(function(name) { return savedPgns[name].folder === 'w'; });
+    var blackFiles = fileNames.filter(function(name) { return savedPgns[name].folder === 'b'; });
 
-        el.innerHTML = '<div class="item-name">📄 ' + fileName + '</div> <span class="item-status">' + icon + ' ' + fileStatus + ' <button class="btn-delete">x</button></span>';
+    function createFolder(title, files, colorFolder) {
+        var folderDiv = document.createElement('div');
+        folderDiv.className = 'folder';
+
+        var folderHeader = document.createElement('div');
+        folderHeader.className = 'folder-header';
+        folderHeader.innerHTML = '<span>📁 ' + title + ' (' + files.length + ')</span>';
         
-        el.querySelector('.btn-delete').addEventListener('click', function(e) { deleteFile(fileName, e); });
-        el.addEventListener('click', function() { handleFileClick(fileName, el); });
-        
-        treeDiv.appendChild(el);
-    });
+        var folderContent = document.createElement('div');
+        folderContent.className = 'folder-content';
+        folderContent.style.display = files.length > 0 ? 'block' : 'none';
+
+        folderHeader.onclick = function() {
+            folderContent.style.display = (folderContent.style.display === 'none') ? 'block' : 'none';
+        };
+
+        files.forEach(function(fileName) {
+            var el = document.createElement('div');
+            el.className = 'tree-item file';
+            if (activeFilePath === fileName) el.classList.add('active');
+            
+            var fileStats = progressDB[fileName];
+            var fileStatus = 'Новый';
+            var icon = '⚪';
+            
+            if (fileStats && fileStats.variants) {
+                var passedToday = true;
+                var oldestDate = getTodayStr();
+                var keys = Object.keys(fileStats.variants);
+                
+                for (var i = 0; i < keys.length; i++) {
+                    var varData = fileStats.variants[keys[i]];
+                    var lastP = varData.lastPassed;
+                    if (lastP !== getTodayStr()) passedToday = false;
+                    if (!lastP) oldestDate = null; 
+                    else if (oldestDate && lastP < oldestDate) oldestDate = lastP;
+                }
+                
+                if (keys.length > 0) {
+                    if (passedToday) { icon = '🟢'; fileStatus = 'Сдан'; } 
+                    else { icon = '🔴'; fileStatus = oldestDate ? getDaysAgoStr(oldestDate) : 'Есть новые'; }
+                }
+            }
+
+            el.innerHTML = '<div class="item-name">📄 ' + fileName + '</div> <span class="item-status">' + icon + ' ' + fileStatus + ' <button class="btn-delete">x</button></span>';
+            
+            el.querySelector('.btn-delete').addEventListener('click', function(e) { deleteFile(fileName, e); });
+            el.addEventListener('click', function() { handleFileClick(fileName, colorFolder, el); });
+            
+            folderContent.appendChild(el);
+        });
+
+        folderDiv.appendChild(folderHeader);
+        folderDiv.appendChild(folderContent);
+        treeDiv.appendChild(folderDiv);
+    }
+
+    createFolder('За белых', whiteFiles, 'w');
+    createFolder('За черных', blackFiles, 'b');
 }
 
-function handleFileClick(fileName, element) {
+function handleFileClick(fileName, colorFolder, element) {
     var files = document.querySelectorAll('.file');
     for (var i = 0; i < files.length; i++) { files[i].classList.remove('active'); }
     element.classList.add('active');
+    
     activeFilePath = fileName;
+    activeFileColor = colorFolder;
 
     statusText.textContent = 'Загрузка...';
     
     try {
-        var pgnText = savedPgns[fileName];
+        var pgnText = savedPgns[fileName].content;
         var parsedGames = window.pgnParser.parse(pgnText);
         if (parsedGames && parsedGames.length > 0 && parsedGames[0].moves) {
             fullPgnTree = parsedGames[0].moves;
@@ -218,13 +259,10 @@ function startTraining() {
     
     if (!isForcedRepeat) { currentBranch = fullPgnTree; }
 
-    playerColor = 'w'; 
-    board.orientation('white');
-    var activeFileName = activeFilePath.toLowerCase();
+    playerColor = activeFileColor; 
+    board.orientation(playerColor === 'w' ? 'white' : 'black');
     
-    if (activeFileName.indexOf('черными') !== -1 || activeFileName.indexOf('black') !== -1) {
-        playerColor = 'b';
-        board.orientation('black'); 
+    if (playerColor === 'b') {
         statusText.textContent = "Вы играете за чёрных.";
         movesHistoryDiv.innerHTML = '';
         btnStart.disabled = false;
