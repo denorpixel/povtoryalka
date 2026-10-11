@@ -52,6 +52,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     btnHint.addEventListener('click', showHint);
     
+    // Активация кнопки "Закрыть" на финальном экране
+    btnRetryNo.addEventListener('click', function() {
+        endModal.style.display = 'none';
+    });
+    
+    // Жесткая блокировка скроллинга экрана при перетаскивании фигур по доске
+    var boardContainer = document.getElementById('board');
+    if (boardContainer) {
+        boardContainer.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+    }
+    
     pgnUploadW.addEventListener('change', function(e) { handleFileUpload(e, 'w'); });
     pgnUploadB.addEventListener('change', function(e) { handleFileUpload(e, 'b'); });
 });
@@ -67,7 +80,6 @@ function loadDatabase() {
         if (pgns && pgns !== "") {
             var parsed = JSON.parse(pgns);
             for (var key in parsed) {
-                // Автоматическая миграция старых файлов в новые папки
                 if (typeof parsed[key] === 'string') {
                     var isBlack = (key.toLowerCase().indexOf('черными') !== -1 || key.toLowerCase().indexOf('black') !== -1);
                     savedPgns[key] = { content: parsed[key], folder: isBlack ? 'b' : 'w' };
@@ -98,7 +110,7 @@ function handleFileUpload(e, targetFolderColor) {
                 if (filesProcessed === files.length) {
                     localStorage.setItem('savedPgns', JSON.stringify(savedPgns));
                     renderTree();
-                    e.target.value = ''; // очистка поля загрузки
+                    e.target.value = ''; 
                 }
             };
             reader.readAsText(file);
@@ -288,7 +300,7 @@ function onDragStart (source, piece) {
 function showHint() {
     if (currentPgnIndex >= currentBranch.length) return;
     var expectedSan = currentBranch[currentPgnIndex].notation.notation;
-    statusText.textContent = 'Подсказка: ожидается ход ' + expectedSan;
+    statusText.textContent = 'Подсказка:\nожидается ход ' + expectedSan;
     hintCount++;
     updateStatsUI();
 }
