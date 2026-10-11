@@ -5,14 +5,25 @@
   <title>Повторялка</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="chessboard-1.0.0.min.css">
-  <script src="pgn-parser.js"></script>
+  <script>
+    // Детектор ошибок для старого Android
+    window.onerror = function(msg, url, line) {
+      var d = document.getElementById('sys-debug');
+      if (d) { d.style.display = 'block'; d.innerHTML += '<p>❌ Код упал: ' + msg + ' (стр. ' + line + ')</p>'; }
+    };
+    function scriptErr(name) {
+      var d = document.getElementById('sys-debug');
+      if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Файл не загружен сервером: ' + name + '</p>'; }
+    }
+  </script>
+  <link rel="stylesheet" href="chessboard-1.0.0.min.css" onerror="scriptErr('CSS доски')">
+  <script src="pgn-parser.js" onerror="scriptErr('pgn-parser.js')"></script>
   <style>
+    #sys-debug { display: none; background: #c0392b; color: white; padding: 15px; font-family: monospace; z-index: 10000; position: fixed; top: 0; left: 0; right: 0; font-size: 14px; max-height: 40vh; overflow-y: auto;}
     body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; font-family: sans-serif; overflow: hidden; }
     #sidebar { width: 300px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column; }
     #sidebar-header { padding: 15px; background: #2d2d30; font-weight: bold; font-size: 1.1em; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
     
-    /* Стилизация кнопки загрузки файлов */
     .file-upload-label { cursor: pointer; background: #4ec9b0; color: #1e1e1e; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; }
     #pgn-upload { display: none; }
     
@@ -63,6 +74,7 @@
   </style>
 </head>
 <body>
+  <div id="sys-debug"></div>
   <div id="sidebar">
     <div id="sidebar-header">
        <span>Дебюты</span>
@@ -106,13 +118,16 @@
     </div>
   </div>
   
-  <script src="jquery-3.6.0.min.js"></script>
-  <script src="chessboard-1.0.0.min.js"></script>
-  <script src="chess.min.js"></script>
-  <script src="app.js"></script>
+  <script src="jquery-3.6.0.min.js" onerror="scriptErr('jquery')"></script>
+  <script src="chessboard-1.0.0.min.js" onerror="scriptErr('chessboard')"></script>
+  <script src="chess.min.js" onerror="scriptErr('chess.js')"></script>
+  <script src="app.js" onerror="scriptErr('app.js')"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+      navigator.serviceWorker.register('sw.js').catch(function(err) {
+         var d = document.getElementById('sys-debug');
+         if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Офлайн-кэш не запущен: ' + err.message + '</p>'; }
+      });
     }
   </script>
 </body>
