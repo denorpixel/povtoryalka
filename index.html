@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="manifest" href="manifest.json">
   <script>
-    // Обновленный детектор с выводом имени файла
     window.onerror = function(msg, url, line) {
       var d = document.getElementById('sys-debug');
       if (d) {
@@ -20,24 +19,28 @@
       if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Файл не загружен сервером: ' + name + '</p>'; }
     }
   </script>
-  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=2" onerror="scriptErr('CSS доски')">
-  <script src="pgn-parser.js?v=2" onerror="scriptErr('pgn-parser.js')"></script>
+  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=3" onerror="scriptErr('CSS доски')">
+  <script src="pgn-parser.js?v=3" onerror="scriptErr('pgn-parser.js')"></script>
   <style>
     #sys-debug { display: none; background: #c0392b; color: white; padding: 15px; font-family: monospace; z-index: 10000; position: fixed; top: 0; left: 0; right: 0; font-size: 14px; max-height: 40vh; overflow-y: auto;}
     body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; font-family: sans-serif; overflow: hidden; }
     #sidebar { width: 300px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column; }
-    #sidebar-header { padding: 15px; background: #2d2d30; font-weight: bold; font-size: 1.1em; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    #sidebar-header { padding: 15px; background: #2d2d30; border-bottom: 1px solid #333; display: flex; flex-direction: column; gap: 10px; }
     
-    .file-upload-label { cursor: pointer; background: #4ec9b0; color: #1e1e1e; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; }
-    #pgn-upload { display: none; }
+    .file-upload-btn-w { cursor: pointer; background: #e0e0e0; color: #1e1e1e; padding: 8px; border-radius: 4px; font-size: 0.9em; flex: 1; text-align: center; font-weight: bold; }
+    .file-upload-btn-b { cursor: pointer; background: #333; color: #fff; padding: 8px; border-radius: 4px; font-size: 0.9em; flex: 1; text-align: center; border: 1px solid #666; font-weight: bold; }
     
     #file-tree { padding: 10px; overflow-y: auto; flex: 1; }
+    .folder-header { background: #333337; padding: 12px 10px; cursor: pointer; font-weight: bold; font-size: 1.05em; border-radius: 4px; border: 1px solid #444; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .folder-header:active { background: #3f3f46; }
+    .folder-content { padding-left: 10px; margin-bottom: 10px; }
+    
     .tree-item { padding: 12px 10px; margin: 4px 0; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; }
     .tree-item:active { background-color: #37373d; }
-    .item-name { display: flex; align-items: center; gap: 8px; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .item-name { display: flex; align-items: center; gap: 8px; font-size: 1.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
     .item-status { font-size: 0.85em; color: #888; }
     .file.active { background-color: #04395e; color: #fff; }
-    .btn-delete { background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.8em; }
+    .btn-delete { background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.8em; margin-left: 5px; }
     
     #main { flex: 1; display: flex; padding: 10px; gap: 15px; align-items: flex-start; justify-content: center; overflow-y: auto; }
     #board-container { width: 100%; max-width: 600px; }
@@ -81,11 +84,17 @@
   <div id="sys-debug"></div>
   <div id="sidebar">
     <div id="sidebar-header">
-       <span>Дебюты</span>
-       <label class="file-upload-label">
-           + PGN
-           <input type="file" id="pgn-upload" accept=".pgn" multiple>
-       </label>
+       <span style="font-size: 1.1em; font-weight: bold; color: #fff;">Добавить PGN:</span>
+       <div style="display: flex; gap: 8px;">
+           <label class="file-upload-btn-w">
+               + В белые
+               <input type="file" id="pgn-upload-w" accept=".pgn" multiple style="display: none;">
+           </label>
+           <label class="file-upload-btn-b">
+               + В черные
+               <input type="file" id="pgn-upload-b" accept=".pgn" multiple style="display: none;">
+           </label>
+       </div>
     </div>
     <div id="file-tree"></div>
   </div>
@@ -122,20 +131,17 @@
     </div>
   </div>
   
-  <script src="jquery-3.6.0.min.js?v=2" onerror="scriptErr('jquery')"></script>
-  <script src="chessboard-1.0.0.min.js?v=2" onerror="scriptErr('chessboard')"></script>
-  <script src="chess.min.js?v=2" onerror="scriptErr('chess.js')"></script>
-  <script src="app.js?v=2" onerror="scriptErr('app.js')"></script>
+  <script src="jquery-3.6.0.min.js?v=3" onerror="scriptErr('jquery')"></script>
+  <script src="chessboard-1.0.0.min.js?v=3" onerror="scriptErr('chessboard')"></script>
+  <script src="chess.min.js?v=3" onerror="scriptErr('chess.js')"></script>
+  <script src="app.js?v=3" onerror="scriptErr('app.js')"></script>
   <script>
-    // Временно отключаем Service Worker для чистоты эксперимента
-    /*
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(err) {
          var d = document.getElementById('sys-debug');
          if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Офлайн-кэш не запущен: ' + err.message + '</p>'; }
       });
     }
-    */
   </script>
 </body>
 </html>
