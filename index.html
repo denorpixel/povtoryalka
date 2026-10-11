@@ -19,20 +19,23 @@
       if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Файл не загружен сервером: ' + name + '</p>'; }
     }
   </script>
-  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=4" onerror="scriptErr('CSS доски')">
-  <script src="pgn-parser.js?v=4" onerror="scriptErr('pgn-parser.js')"></script>
+  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=5" onerror="scriptErr('CSS доски')">
+  <script src="pgn-parser.js?v=5" onerror="scriptErr('pgn-parser.js')"></script>
   <style>
     #sys-debug { display: none; background: #c0392b; color: white; padding: 15px; font-family: monospace; z-index: 10000; position: fixed; top: 0; left: 0; right: 0; font-size: 14px; max-height: 40vh; overflow-y: auto;}
     body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; font-family: sans-serif; overflow: hidden; }
     
-    #sidebar { width: 300px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column; }
-    #sidebar-header { padding: 12px; background: #2d2d30; border-bottom: 1px solid #333; }
-    .header-top { display: flex; justify-content: space-between; align-items: center; }
-    .btn-toggle-pgn { background: #4ec9b0; color: #1e1e1e; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9em; }
-    #add-pgn-options { display: none; gap: 8px; margin-top: 12px; }
+    #sidebar { width: 300px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
+    #sidebar-header { padding: 12px; background: #2d2d30; border-bottom: 1px solid #333; flex-shrink: 0; }
     
-    .file-upload-btn-w { cursor: pointer; background: #e0e0e0; color: #1e1e1e; padding: 8px; border-radius: 4px; font-size: 0.9em; flex: 1; text-align: center; font-weight: bold; }
-    .file-upload-btn-b { cursor: pointer; background: #333; color: #fff; padding: 8px; border-radius: 4px; font-size: 0.9em; flex: 1; text-align: center; border: 1px solid #666; font-weight: bold; }
+    /* Жесткая верстка шапки для старых Android */
+    .header-top { display: block; overflow: hidden; margin-bottom: 5px; }
+    .header-title { float: left; font-size: 1.1em; font-weight: bold; color: #fff; margin-top: 6px; }
+    .btn-toggle-pgn { float: right; background: #4ec9b0; color: #1e1e1e; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9em; margin: 0; }
+    #add-pgn-options { display: none; gap: 8px; margin-top: 10px; clear: both; }
+    
+    .file-upload-btn-w { display: block; cursor: pointer; background: #e0e0e0; color: #1e1e1e; padding: 10px; border-radius: 4px; font-size: 0.95em; flex: 1; text-align: center; font-weight: bold; }
+    .file-upload-btn-b { display: block; cursor: pointer; background: #333; color: #fff; padding: 10px; border-radius: 4px; font-size: 0.95em; flex: 1; text-align: center; border: 1px solid #666; font-weight: bold; }
     
     #file-tree { padding: 10px; overflow-y: auto; flex: 1; }
     .folder-header { background: #333337; padding: 10px; cursor: pointer; font-weight: bold; font-size: 1.05em; border-radius: 4px; border: 1px solid #444; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
@@ -44,12 +47,12 @@
     .item-name { display: flex; align-items: center; gap: 8px; font-size: 1.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
     .item-status { font-size: 0.85em; color: #888; }
     .file.active { background-color: #04395e; color: #fff; }
-    .btn-delete { background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; font-size: 0.8em; margin-left: 5px; }
+    .btn-delete { background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 4px 8px; cursor: pointer; font-size: 0.8em; margin-left: 5px; }
     
-    #main { flex: 1; display: flex; padding: 10px; gap: 15px; align-items: flex-start; justify-content: center; overflow-y: auto; }
-    #board-container { width: 100%; max-width: 600px; }
+    #main { flex: 1; display: flex; padding: 10px; gap: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
+    #board-container { width: 100%; max-width: 500px; flex-shrink: 0; margin-bottom: 15px; }
     
-    #right-panel { flex: 1; max-width: 350px; display: flex; flex-direction: column; gap: 10px; }
+    #right-panel { flex: 1; max-width: 350px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
     #status-text { font-size: 1.2em; font-weight: bold; color: #4ec9b0; text-align: center; min-height: 30px; }
     #move-comment { display: none; background-color: #2b3a42; padding: 10px; border-left: 5px solid #4ec9b0; border-radius: 4px; font-size: 1.1em; max-height: 150px; overflow-y: auto; }
     
@@ -78,15 +81,14 @@
 
     @media (max-width: 768px) {
       body { flex-direction: column; }
-      #sidebar { width: 100%; max-height: 25vh; border-right: none; border-bottom: 1px solid #333; overflow-y: auto; }
-      #main { flex-direction: column; align-items: center; padding: 5px; gap: 10px; }
-      #board-container { width: 100%; max-width: 95vw; }
+      #sidebar { width: 100%; max-height: 25vh; border-right: none; border-bottom: 1px solid #333; overflow-y: auto; flex-shrink: 0; }
+      #main { flex-direction: column; align-items: center; padding: 15px 10px; gap: 20px; }
+      #board-container { width: 100%; max-width: 90vw; margin-bottom: 25px; flex-shrink: 0; } 
       
-      #right-panel { max-width: 100%; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+      #right-panel { max-width: 100%; width: 100%; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; margin-bottom: 20px; }
       
-      /* Перестановка элементов для узких экранов (кнопки и статы прыгают под доску) */
-      #status-text { order: 1; }
-      #stats-box { order: 2; padding: 8px; }
+      #status-text { order: 1; margin-bottom: 5px; }
+      #stats-box { order: 2; padding: 12px; }
       #controls { order: 3; }
       #move-comment { order: 4; }
       #moves-history { order: 5; }
@@ -98,7 +100,7 @@
   <div id="sidebar">
     <div id="sidebar-header">
        <div class="header-top">
-           <span style="font-size: 1.1em; font-weight: bold; color: #fff;">Дебюты</span>
+           <div class="header-title">Дебюты</div>
            <button class="btn-toggle-pgn" onclick="var el = document.getElementById('add-pgn-options'); el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';">
                + Добавить PGN
            </button>
@@ -149,10 +151,10 @@
     </div>
   </div>
   
-  <script src="jquery-3.6.0.min.js?v=4" onerror="scriptErr('jquery')"></script>
-  <script src="chessboard-1.0.0.min.js?v=4" onerror="scriptErr('chessboard')"></script>
-  <script src="chess.min.js?v=4" onerror="scriptErr('chess.js')"></script>
-  <script src="app.js?v=4" onerror="scriptErr('app.js')"></script>
+  <script src="jquery-3.6.0.min.js?v=5" onerror="scriptErr('jquery')"></script>
+  <script src="chessboard-1.0.0.min.js?v=5" onerror="scriptErr('chessboard')"></script>
+  <script src="chess.min.js?v=5" onerror="scriptErr('chess.js')"></script>
+  <script src="app.js?v=5" onerror="scriptErr('app.js')"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(err) {
