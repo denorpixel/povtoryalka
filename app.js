@@ -29,35 +29,43 @@ var treeDiv = document.getElementById('file-tree');
 var pgnUpload = document.getElementById('pgn-upload');
 
 document.addEventListener('DOMContentLoaded', function() {
-  board = Chessboard('board', {
-    position: 'start',
-    pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
-    draggable: true,
-    onDragStart: onDragStart,
-    onDrop: onDrop,
-    onSnapEnd: onSnapEnd
-  });
+    board = Chessboard('board', {
+        position: 'start',
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+        draggable: true,
+        onDragStart: onDragStart,
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd
+    });
 
-  loadDatabase();
-  renderTree();
+    loadDatabase();
+    renderTree();
 
-  btnStart.addEventListener('click', function() {
-      if(currentBranch.length > 0) {
-          isForcedRepeat = false; 
-          startTraining();
-      }
-  });
-  btnHint.addEventListener('click', showHint);
-  
-  pgnUpload.addEventListener('change', handleFileUpload);
+    btnStart.addEventListener('click', function() {
+        if(currentBranch.length > 0) {
+            isForcedRepeat = false; 
+            startTraining();
+        }
+    });
+    btnHint.addEventListener('click', showHint);
+    
+    pgnUpload.addEventListener('change', handleFileUpload);
 });
 
 function loadDatabase() {
-    var db = localStorage.getItem('progressDB');
-    if (db) { progressDB = JSON.parse(db); }
+    try {
+        var db = localStorage.getItem('progressDB');
+        if (db && db !== "") { progressDB = JSON.parse(db); }
+    } catch (e) {
+        progressDB = {};
+    }
     
-    var pgns = localStorage.getItem('savedPgns');
-    if (pgns) { savedPgns = JSON.parse(pgns); }
+    try {
+        var pgns = localStorage.getItem('savedPgns');
+        if (pgns && pgns !== "") { savedPgns = JSON.parse(pgns); }
+    } catch (e) {
+        savedPgns = {};
+    }
 }
 
 function saveDatabase() {
@@ -79,7 +87,7 @@ function handleFileUpload(e) {
                 if (filesProcessed === files.length) {
                     localStorage.setItem('savedPgns', JSON.stringify(savedPgns));
                     renderTree();
-                    pgnUpload.value = ''; 
+                    pgnUpload.value = ''; // очистка
                 }
             };
             reader.readAsText(file);
@@ -88,7 +96,7 @@ function handleFileUpload(e) {
 }
 
 function deleteFile(fileName, event) {
-    event.stopPropagation(); 
+    event.stopPropagation(); // чтобы не кликался сам файл
     if (confirm('Удалить ' + fileName + '?')) {
         delete savedPgns[fileName];
         delete progressDB[fileName];
@@ -114,72 +122,72 @@ function getDaysAgoStr(dateStr) {
 }
 
 function renderTree() {
-  treeDiv.innerHTML = ''; 
-  var fileNames = Object.keys(savedPgns);
-  
-  if (fileNames.length === 0) {
-      treeDiv.innerHTML = '<div style="color:#888; padding: 10px;">Нажмите + PGN, чтобы добавить файлы</div>';
-      return;
-  }
-
-  fileNames.forEach(function(fileName) {
-    var el = document.createElement('div');
-    el.className = 'tree-item file';
+    treeDiv.innerHTML = ''; 
+    var fileNames = Object.keys(savedPgns);
     
-    var fileStats = progressDB[fileName];
-    var fileStatus = 'Новый';
-    var icon = '⚪';
-    
-    if (fileStats && fileStats.variants) {
-        var passedToday = true;
-        var oldestDate = getTodayStr();
-        var keys = Object.keys(fileStats.variants);
-        
-        for (var i = 0; i < keys.length; i++) {
-            var varData = fileStats.variants[keys[i]];
-            var lastP = varData.lastPassed;
-            if (lastP !== getTodayStr()) passedToday = false;
-            if (!lastP) oldestDate = null; 
-            else if (oldestDate && lastP < oldestDate) oldestDate = lastP;
-        }
-        
-        if (keys.length > 0) {
-            if (passedToday) { icon = '🟢'; fileStatus = 'Сдан'; } 
-            else { icon = '🔴'; fileStatus = oldestDate ? getDaysAgoStr(oldestDate) : 'Есть новые'; }
-        }
+    if (fileNames.length === 0) {
+        treeDiv.innerHTML = '<div style="color:#888; padding: 10px;">Нажмите + PGN, чтобы добавить файлы</div>';
+        return;
     }
 
-    el.innerHTML = '<div class="item-name">📄 ' + fileName + '</div> <span class="item-status">' + icon + ' ' + fileStatus + ' <button class="btn-delete">x</button></span>';
-    
-    el.querySelector('.btn-delete').addEventListener('click', function(e) { deleteFile(fileName, e); });
-    el.addEventListener('click', function() { handleFileClick(fileName, el); });
-    
-    treeDiv.appendChild(el);
-  });
+    fileNames.forEach(function(fileName) {
+        var el = document.createElement('div');
+        el.className = 'tree-item file';
+        
+        var fileStats = progressDB[fileName];
+        var fileStatus = 'Новый';
+        var icon = '⚪';
+        
+        if (fileStats && fileStats.variants) {
+            var passedToday = true;
+            var oldestDate = getTodayStr();
+            var keys = Object.keys(fileStats.variants);
+            
+            for (var i = 0; i < keys.length; i++) {
+                var varData = fileStats.variants[keys[i]];
+                var lastP = varData.lastPassed;
+                if (lastP !== getTodayStr()) passedToday = false;
+                if (!lastP) oldestDate = null; 
+                else if (oldestDate && lastP < oldestDate) oldestDate = lastP;
+            }
+            
+            if (keys.length > 0) {
+                if (passedToday) { icon = '🟢'; fileStatus = 'Сдан'; } 
+                else { icon = '🔴'; fileStatus = oldestDate ? getDaysAgoStr(oldestDate) : 'Есть новые'; }
+            }
+        }
+
+        el.innerHTML = '<div class="item-name">📄 ' + fileName + '</div> <span class="item-status">' + icon + ' ' + fileStatus + ' <button class="btn-delete">x</button></span>';
+        
+        el.querySelector('.btn-delete').addEventListener('click', function(e) { deleteFile(fileName, e); });
+        el.addEventListener('click', function() { handleFileClick(fileName, el); });
+        
+        treeDiv.appendChild(el);
+    });
 }
 
 function handleFileClick(fileName, element) {
-  var files = document.querySelectorAll('.file');
-  for (var i = 0; i < files.length; i++) { files[i].classList.remove('active'); }
-  element.classList.add('active');
-  activeFilePath = fileName;
+    var files = document.querySelectorAll('.file');
+    for (var i = 0; i < files.length; i++) { files[i].classList.remove('active'); }
+    element.classList.add('active');
+    activeFilePath = fileName;
 
-  statusText.textContent = 'Загрузка...';
-  
-  try {
-      var pgnText = savedPgns[fileName];
-      var parsedGames = window.pgnParser.parse(pgnText);
-      if (parsedGames && parsedGames.length > 0 && parsedGames[0].moves) {
-          fullPgnTree = parsedGames[0].moves;
-          statusText.textContent = 'Тренировка загружена';
-          isForcedRepeat = false;
-          startTraining();
-      } else {
-          statusText.textContent = 'В файле нет ходов';
-      }
-  } catch (e) {
-      statusText.textContent = 'Ошибка чтения PGN';
-  }
+    statusText.textContent = 'Загрузка...';
+    
+    try {
+        var pgnText = savedPgns[fileName];
+        var parsedGames = window.pgnParser.parse(pgnText);
+        if (parsedGames && parsedGames.length > 0 && parsedGames[0].moves) {
+            fullPgnTree = parsedGames[0].moves;
+            statusText.textContent = 'Тренировка загружена';
+            isForcedRepeat = false;
+            startTraining();
+        } else {
+            statusText.textContent = 'В файле нет ходов';
+        }
+    } catch (e) {
+        statusText.textContent = 'Ошибка чтения PGN';
+    }
 }
 
 function showCommentForNode(node, append) {
@@ -234,9 +242,9 @@ function startTraining() {
 }
 
 function onDragStart (source, piece) {
-  if (game.game_over()) return false;
-  if ((playerColor === 'w' && piece.search(/^b/) !== -1) || (playerColor === 'b' && piece.search(/^w/) !== -1)) return false;
-  if (game.turn() !== playerColor) return false;
+    if (game.game_over()) return false;
+    if ((playerColor === 'w' && piece.search(/^b/) !== -1) || (playerColor === 'b' && piece.search(/^w/) !== -1)) return false;
+    if (game.turn() !== playerColor) return false;
 }
 
 function showHint() {
@@ -302,32 +310,32 @@ function checkEndOfLine() {
 }
 
 function onDrop (source, target) {
-  if (currentPgnIndex >= currentBranch.length) return 'snapback';
+    if (currentPgnIndex >= currentBranch.length) return 'snapback';
 
-  var testMove = game.move({ from: source, to: target, promotion: 'q' });
-  if (testMove === null) return 'snapback';
-  game.undo(); 
+    var testMove = game.move({ from: source, to: target, promotion: 'q' });
+    if (testMove === null) return 'snapback';
+    game.undo(); 
 
-  var expectedNode = currentBranch[currentPgnIndex];
+    var expectedNode = currentBranch[currentPgnIndex];
 
-  if (testMove.san === expectedNode.notation.notation) {
-      game.move(testMove);
-      currentPgnIndex++;
-      statusText.textContent = "Правильно!";
-      updateHistoryText();
-      
-      showCommentForNode(expectedNode, false); 
-      
-      if (!checkEndOfLine()) {
-          btnHint.disabled = true; 
-          setTimeout(function() { makeComputerMove(false); }, 300);
-      }
-  } else {
-      errorCount++;
-      updateStatsUI();
-      statusText.textContent = 'Ошибка! Ожидался другой ход.';
-      return 'snapback'; 
-  }
+    if (testMove.san === expectedNode.notation.notation) {
+        game.move(testMove);
+        currentPgnIndex++;
+        statusText.textContent = "Правильно!";
+        updateHistoryText();
+        
+        showCommentForNode(expectedNode, false); 
+        
+        if (!checkEndOfLine()) {
+            btnHint.disabled = true; 
+            setTimeout(function() { makeComputerMove(false); }, 300);
+        }
+    } else {
+        errorCount++;
+        updateStatsUI();
+        statusText.textContent = 'Ошибка! Ожидался другой ход.';
+        return 'snapback'; 
+    }
 }
 
 function makeComputerMove(isFirstMove) {
@@ -344,3 +352,39 @@ function makeComputerMove(isFirstMove) {
                 computerOptions.push({ node: variationBranch[0], branch: variationBranch, nextIndex: 1 });
             }
         });
+    }
+    
+    var chosenOption;
+    
+    if (isForcedRepeat) {
+         chosenOption = computerOptions[0]; 
+    } else {
+        if (Math.random() < 0.2 || !progressDB[activeFilePath]) {
+            chosenOption = computerOptions[Math.floor(Math.random() * computerOptions.length)];
+        } else {
+            chosenOption = computerOptions[Math.floor(Math.random() * computerOptions.length)];
+        }
+    }
+    
+    game.move(chosenOption.node.notation.notation);
+    board.position(game.fen(), !isFirstMove); 
+    
+    currentBranch = chosenOption.branch;
+    currentPgnIndex = chosenOption.nextIndex;
+    
+    statusText.textContent = "Ваш ход";
+    updateHistoryText();
+    btnHint.disabled = false; 
+    
+    showCommentForNode(chosenOption.node, true); 
+    checkEndOfLine();
+}
+
+function onSnapEnd () { board.position(game.fen()); }
+
+function updateHistoryText() {
+    movesHistoryDiv.innerHTML = game.pgn();
+    movesHistoryDiv.scrollTop = movesHistoryDiv.scrollHeight;
+}
+
+window.addEventListener('resize', function() { if (board) board.resize(); });
