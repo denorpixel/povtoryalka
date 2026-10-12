@@ -491,9 +491,13 @@ function onDrop (source, target) {
     var expectedNode = currentBranch[currentPgnIndex];
     var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
 
+    // Счищаем знаки оценки (!, ?, !!, ??, !?, ?!) с хода пользователя для честного сравнения
+    var cleanTestSan = testMove.san.replace(/[!?]/g, '');
+
     var matchedOption = null;
     for (var i = 0; i < validOptions.length; i++) {
-        if (testMove.san === validOptions[i].san) {
+        var cleanOptionSan = validOptions[i].san.replace(/[!?]/g, '');
+        if (cleanTestSan === cleanOptionSan) {
             matchedOption = validOptions[i];
             break;
         }
@@ -536,7 +540,6 @@ function makeComputerMove(isFirstMove) {
     var chosenOption = null;
     if (isForcedRepeat && savedComputerMoves.length > 0) {
          var expectedSan = savedComputerMoves.shift();
-         // Классический цикл FOR без всяких .find (надежно как молоток)
          for (var i = 0; i < computerOptions.length; i++) {
              if (computerOptions[i].san === expectedSan) {
                  chosenOption = computerOptions[i];
@@ -551,9 +554,12 @@ function makeComputerMove(isFirstMove) {
     
     computerMovesHistory.push(chosenOption.san);
     
-    var moveRes = game.move(chosenOption.san);
+    // Счищаем знаки оценки (!, ?) перед передачей хода компьютеру
+    var cleanSan = chosenOption.san.replace(/[!?]/g, '');
+    var moveRes = game.move(cleanSan);
+    
     if (!moveRes) {
-        moveRes = game.move(chosenOption.san, {sloppy: true});
+        moveRes = game.move(cleanSan, {sloppy: true});
     }
     
     board.position(game.fen(), !isFirstMove); 
