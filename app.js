@@ -52,12 +52,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     btnHint.addEventListener('click', showHint);
     
-    // Активация кнопки "Закрыть" на финальном экране
     btnRetryNo.addEventListener('click', function() {
         endModal.style.display = 'none';
     });
     
-    // Жесткая блокировка скроллинга экрана при перетаскивании фигур по доске
     var boardContainer = document.getElementById('board');
     if (boardContainer) {
         boardContainer.addEventListener('touchmove', function(e) {
@@ -297,10 +295,42 @@ function onDragStart (source, piece) {
     if (game.turn() !== playerColor) return false;
 }
 
+// Новая функция извлечения всех доступных ходов (главный ход + все записанные варианты)
+function getValidOptions(node, branch, index) {
+    var options = [];
+    if (!node) return options;
+    
+    var san = node.notation ? node.notation.notation : '';
+    // Игнорируем пустые или битые ходы (например '.')
+    if (san && san !== '.' && san !== 'Z0' && san !== '--' && san !== '...' && san !== '*') {
+        options.push({ san: san, node: node, branch: branch, nextIndex: index + 1 });
+    }
+    
+    if (node.variations && node.variations.length > 0) {
+        node.variations.forEach(function(vb) {
+            if (vb && vb.length > 0) {
+                var vNode = vb[0];
+                var vSan = vNode.notation ? vNode.notation.notation : '';
+                if (vSan && vSan !== '.' && vSan !== 'Z0' && vSan !== '--' && vSan !== '...' && vSan !== '*') {
+                    options.push({ san: vSan, node: vNode, branch: vb, nextIndex: 1 });
+                }
+            }
+        });
+    }
+    return options;
+}
+
 function showHint() {
     if (currentPgnIndex >= currentBranch.length) return;
-    var expectedSan = currentBranch[currentPgnIndex].notation.notation;
-    statusText.textContent = 'Подсказка:\nожидается ход ' + expectedSan;
+    var expectedNode = currentBranch[currentPgnIndex];
+    var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
+    
+    if (validOptions.length > 0) {
+        var sans = validOptions.map(function(o) { return o.san; });
+        statusText.textContent = 'Подсказка:\nожидается ' + sans.join(' или ');
+    } else {
+        statusText.textContent = 'Подсказка:\nЛиния завершена';
+    }
     hintCount++;
     updateStatsUI();
 }
@@ -311,7 +341,17 @@ function updateStatsUI() {
 }
 
 function checkEndOfLine() {
+    var isEnd = false;
     if (currentPgnIndex >= currentBranch.length) {
+        isEnd = true;
+    } else {
+        // Проверяем, остались ли вообще реальные ходы в линии
+        var expectedNode = currentBranch[currentPgnIndex];
+        var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
+        if (validOptions.length === 0) isEnd = true;
+    }
+
+    if (isEnd) {
         btnHint.disabled = true;
         
         var currentLinePgn = game.pgn();
@@ -367,14 +407,26 @@ function onDrop (source, target) {
     game.undo(); 
 
     var expectedNode = currentBranch[currentPgnIndex];
+    // Получаем все допустимые ходы (главный + варианты)
+    var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
 
-    if (testMove.san === expectedNode.notation.notation) {
+    var matchedOption = null;
+    for (var i = 0; i < validOptions.length; i++) {
+        if (testMove.san === validOptions[i].san) {
+            matchedOption = validOptions[i];
+            break;
+        }
+    }
+
+    if (matchedOption) {
         game.move(testMove);
-        currentPgnIndex++;
+        currentPgnIndex = matchedOption.nextIndex;
+        currentBranch = matchedOption.branch; // Переключаемся на вариант, если нужно
+        
         statusText.textContent = "Правильно!";
         updateHistoryText();
         
-        showCommentForNode(expectedNode, false); 
+        showCommentForNode(matchedOption.node, false); 
         
         if (!checkEndOfLine()) {
             btnHint.disabled = true; 
@@ -392,31 +444,21 @@ function makeComputerMove(isFirstMove) {
     if (currentPgnIndex >= currentBranch.length) return;
     
     var mainNode = currentBranch[currentPgnIndex];
-    var computerOptions = [];
+    var computerOptions = getValidOptions(mainNode, currentBranch, currentPgnIndex);
     
-    computerOptions.push({ node: mainNode, branch: currentBranch, nextIndex: currentPgnIndex + 1 });
-    
-    if (mainNode.variations && mainNode.variations.length > 0) {
-        mainNode.variations.forEach(function(variationBranch) {
-            if (variationBranch && variationBranch.length > 0) {
-                computerOptions.push({ node: variationBranch[0], branch: variationBranch, nextIndex: 1 });
-            }
-        });
+    if (computerOptions.length === 0) {
+        checkEndOfLine();
+        return;
     }
     
     var chosenOption;
-    
     if (isForcedRepeat) {
          chosenOption = computerOptions[0]; 
     } else {
-        if (Math.random() < 0.2 || !progressDB[activeFilePath]) {
-            chosenOption = computerOptions[Math.floor(Math.random() * computerOptions.length)];
-        } else {
-            chosenOption = computerOptions[Math.floor(Math.random() * computerOptions.length)];
-        }
+         chosenOption = computerOptions[Math.floor(Math.random() * computerOptions.length)];
     }
     
-    game.move(chosenOption.node.notation.notation);
+    game.move(chosenOption.san);
     board.position(game.fen(), !isFirstMove); 
     
     currentBranch = chosenOption.branch;
