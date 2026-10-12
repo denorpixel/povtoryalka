@@ -223,21 +223,46 @@ function handleFileClick(fileName, colorFolder, element) {
     activeFilePath = fileName;
     activeFileColor = colorFolder;
 
+    // Жесткая очистка предыдущего дебюта, чтобы не было "призраков"
+    fullPgnTree = [];
+    currentBranch = [];
+    currentPgnIndex = 0;
+    btnStart.disabled = true; 
     statusText.textContent = 'Загрузка...';
     
     try {
         var pgnText = savedPgns[fileName].content;
         var parsedGames = window.pgnParser.parse(pgnText);
-        if (parsedGames && parsedGames.length > 0 && parsedGames[0].moves) {
-            fullPgnTree = parsedGames[0].moves;
+        
+        var allValidGames = [];
+        if (parsedGames && parsedGames.length > 0) {
+            for (var i = 0; i < parsedGames.length; i++) {
+                if (parsedGames[i].moves && parsedGames[i].moves.length > 0) {
+                    allValidGames.push(parsedGames[i].moves);
+                }
+            }
+        }
+        
+        if (allValidGames.length > 0) {
+            fullPgnTree = allValidGames[0];
+            
+            // Если в файле несколько глав, объединяем их в супер-дерево
+            if (allValidGames.length > 1) {
+                if (!fullPgnTree[0].variations) fullPgnTree[0].variations = [];
+                for (var j = 1; j < allValidGames.length; j++) {
+                    fullPgnTree[0].variations.push(allValidGames[j]);
+                }
+            }
+            
             statusText.textContent = 'Тренировка загружена';
+            btnStart.disabled = false;
             isForcedRepeat = false;
             startTraining();
         } else {
             statusText.textContent = 'В файле нет ходов';
         }
     } catch (e) {
-        statusText.textContent = 'Ошибка чтения PGN';
+        statusText.textContent = 'Ошибка PGN: проверьте файл';
     }
 }
 
@@ -258,6 +283,22 @@ function showCommentForNode(node, append) {
     }
 }
 
+// Авто-перемотка пустых технических ходов от Lichess
+function skipDummyNodes() {
+    while (currentBranch && currentPgnIndex < currentBranch.length) {
+        var node = currentBranch[currentPgnIndex];
+        if (!node) break;
+        
+        var san = node.notation ? node.notation.notation : '';
+        var isDummy = (!san || san === '.' || san === 'Z0' || san === '--' || san === '...' || san === '*');
+        
+        if (!isDummy) break; 
+        
+        showCommentForNode(node, true);
+        currentPgnIndex++;
+    }
+}
+
 function startTraining() {
     game.reset(); 
     board.position('start'); 
@@ -266,8 +307,12 @@ function startTraining() {
     hintCount = 0;
     updateStatsUI();
     endModal.style.display = 'none';
+    currentDisplayComments = [];
+    showCommentForNode(null, false);
     
     if (!isForcedRepeat) { currentBranch = fullPgnTree; }
+
+    skipDummyNodes(); 
 
     playerColor = activeFileColor; 
     board.orientation(playerColor === 'w' ? 'white' : 'black');
@@ -277,7 +322,6 @@ function startTraining() {
         movesHistoryDiv.innerHTML = '';
         btnStart.disabled = false;
         btnHint.disabled = true;
-        showCommentForNode(null, false); 
         setTimeout(function() { makeComputerMove(true); }, 400); 
         return;
     }
@@ -286,7 +330,6 @@ function startTraining() {
     statusText.textContent = "Ваш ход";
     btnStart.disabled = false;
     btnHint.disabled = false;
-    showCommentForNode(null, false);
 }
 
 function onDragStart (source, piece) {
@@ -295,13 +338,11 @@ function onDragStart (source, piece) {
     if (game.turn() !== playerColor) return false;
 }
 
-// Новая функция извлечения всех доступных ходов (главный ход + все записанные варианты)
 function getValidOptions(node, branch, index) {
     var options = [];
     if (!node) return options;
     
     var san = node.notation ? node.notation.notation : '';
-    // Игнорируем пустые или битые ходы (например '.')
     if (san && san !== '.' && san !== 'Z0' && san !== '--' && san !== '...' && san !== '*') {
         options.push({ san: san, node: node, branch: branch, nextIndex: index + 1 });
     }
@@ -345,7 +386,6 @@ function checkEndOfLine() {
     if (currentPgnIndex >= currentBranch.length) {
         isEnd = true;
     } else {
-        // Проверяем, остались ли вообще реальные ходы в линии
         var expectedNode = currentBranch[currentPgnIndex];
         var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
         if (validOptions.length === 0) isEnd = true;
@@ -407,7 +447,6 @@ function onDrop (source, target) {
     game.undo(); 
 
     var expectedNode = currentBranch[currentPgnIndex];
-    // Получаем все допустимые ходы (главный + варианты)
     var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
 
     var matchedOption = null;
@@ -421,12 +460,13 @@ function onDrop (source, target) {
     if (matchedOption) {
         game.move(testMove);
         currentPgnIndex = matchedOption.nextIndex;
-        currentBranch = matchedOption.branch; // Переключаемся на вариант, если нужно
+        currentBranch = matchedOption.branch;
         
         statusText.textContent = "Правильно!";
         updateHistoryText();
         
         showCommentForNode(matchedOption.node, false); 
+        skipDummyNodes();
         
         if (!checkEndOfLine()) {
             btnHint.disabled = true; 
@@ -469,6 +509,7 @@ function makeComputerMove(isFirstMove) {
     btnHint.disabled = false; 
     
     showCommentForNode(chosenOption.node, true); 
+    skipDummyNodes();
     checkEndOfLine();
 }
 
