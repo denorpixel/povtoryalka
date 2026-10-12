@@ -14,7 +14,18 @@ if (!Array.prototype.find) {
     return undefined;
   };
 }
-// ==================================================
+
+// === СУПЕР-ФИЛЬТР (КИРИЛЛИЦА -> ЛАТИНИЦА + ОЧИСТКА МУСОРА) ===
+function cleanSan(san) {
+    if (!san) return '';
+    var cyrToLat = {'а':'a','А':'A','в':'b','В':'B','с':'c','С':'C','д':'d','Д':'D','е':'e','Е':'E','х':'x','Х':'X','о':'o','О':'O','р':'p','Р':'P'};
+    var res = '';
+    for(var i = 0; i < san.length; i++) {
+        res += cyrToLat[san[i]] || san[i];
+    }
+    // Удаляем все лишние знаки (оставляем только английские буквы, цифры и шахматные символы)
+    return res.replace(/[^a-zA-Z0-9=+#O0-]/g, '');
+}
 
 var board = null;
 var game = new Chess();
@@ -491,12 +502,12 @@ function onDrop (source, target) {
     var expectedNode = currentBranch[currentPgnIndex];
     var validOptions = getValidOptions(expectedNode, currentBranch, currentPgnIndex);
 
-    // Счищаем знаки оценки (!, ?, !!, ??, !?, ?!) с хода пользователя для честного сравнения
-    var cleanTestSan = testMove.san.replace(/[!?]/g, '');
-
+    // ПРОПУСКАЕМ ХОД И ИЗ ФАЙЛА, И ОТ ДОСКИ ЧЕРЕЗ СУПЕР-ФИЛЬТР
+    var cleanTestSan = cleanSan(testMove.san);
     var matchedOption = null;
+
     for (var i = 0; i < validOptions.length; i++) {
-        var cleanOptionSan = validOptions[i].san.replace(/[!?]/g, '');
+        var cleanOptionSan = cleanSan(validOptions[i].san);
         if (cleanTestSan === cleanOptionSan) {
             matchedOption = validOptions[i];
             break;
@@ -554,12 +565,12 @@ function makeComputerMove(isFirstMove) {
     
     computerMovesHistory.push(chosenOption.san);
     
-    // Счищаем знаки оценки (!, ?) перед передачей хода компьютеру
-    var cleanSan = chosenOption.san.replace(/[!?]/g, '');
-    var moveRes = game.move(cleanSan);
+    // КОМПЬЮТЕР ТОЖЕ ДЕЛАЕТ ТОЛЬКО "ОЧИЩЕННЫЕ" ХОДЫ
+    var sanToPlay = cleanSan(chosenOption.san);
+    var moveRes = game.move(sanToPlay);
     
     if (!moveRes) {
-        moveRes = game.move(cleanSan, {sloppy: true});
+        moveRes = game.move(sanToPlay, {sloppy: true});
     }
     
     board.position(game.fen(), !isFirstMove); 
