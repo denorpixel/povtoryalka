@@ -16,6 +16,9 @@ var fullPgnTree = [];
 var computerMovesHistory = []; 
 var savedComputerMoves = []; 
 
+var currentParsedGames = [];
+var activeChapterFen = 'start';
+
 var btnStart = document.getElementById('btn-start');
 var btnHint = document.getElementById('btn-hint');
 var statusText = document.getElementById('status-text');
@@ -235,25 +238,16 @@ function handleFileClick(fileName, colorFolder, element) {
         var pgnText = savedPgns[fileName].content;
         var parsedGames = window.pgnParser.parse(pgnText);
         
-        var allValidGames = [];
+        currentParsedGames = [];
         if (parsedGames && parsedGames.length > 0) {
             for (var i = 0; i < parsedGames.length; i++) {
                 if (parsedGames[i].moves && parsedGames[i].moves.length > 0) {
-                    allValidGames.push(parsedGames[i].moves);
+                    currentParsedGames.push(parsedGames[i]);
                 }
             }
         }
         
-        if (allValidGames.length > 0) {
-            fullPgnTree = allValidGames[0];
-            
-            if (allValidGames.length > 1) {
-                if (!fullPgnTree[0].variations) fullPgnTree[0].variations = [];
-                for (var j = 1; j < allValidGames.length; j++) {
-                    fullPgnTree[0].variations.push(allValidGames[j]);
-                }
-            }
-            
+        if (currentParsedGames.length > 0) {
             statusText.textContent = 'Тренировка загружена';
             btnStart.disabled = false;
             isForcedRepeat = false;
@@ -300,10 +294,31 @@ function skipDummyNodes() {
 }
 
 function startTraining() {
-    game.reset(); 
-    board.position('start'); 
+    if (!isForcedRepeat) {
+        var r = Math.floor(Math.random() * currentParsedGames.length);
+        var activeGame = currentParsedGames[r];
+        fullPgnTree = activeGame.moves;
+        
+        activeChapterFen = 'start';
+        if (activeGame.headers) {
+            for (var i = 0; i < activeGame.headers.length; i++) {
+                if (activeGame.headers[i].name === 'FEN') {
+                    activeChapterFen = activeGame.headers[i].value;
+                    break;
+                }
+            }
+        }
+        savedComputerMoves = [];
+    }
     
-    // ЖЕСТКИЙ СБРОС ИНДЕКСА И ВЕТКИ В НАЧАЛО
+    if (activeChapterFen === 'start') {
+        game.reset();
+    } else {
+        var loaded = game.load(activeChapterFen);
+        if (!loaded) game.reset(); 
+    }
+    board.position(game.fen());
+    
     currentBranch = fullPgnTree; 
     currentPgnIndex = 0;
     
@@ -314,9 +329,6 @@ function startTraining() {
     currentDisplayComments = [];
     showCommentForNode(null, false);
     
-    if (!isForcedRepeat) {
-        savedComputerMoves = []; 
-    }
     computerMovesHistory = []; 
 
     skipDummyNodes(); 
@@ -324,8 +336,9 @@ function startTraining() {
     playerColor = activeFileColor; 
     board.orientation(playerColor === 'w' ? 'white' : 'black');
     
-    if (playerColor === 'b') {
-        statusText.textContent = "Вы играете за чёрных.";
+    var turnNow = game.turn();
+    if (turnNow !== playerColor) {
+        statusText.textContent = (playerColor === 'w') ? "Вы играете за белых. Ожидание..." : "Вы играете за чёрных.";
         movesHistoryDiv.innerHTML = '';
         btnStart.disabled = false;
         btnHint.disabled = true;
@@ -437,7 +450,7 @@ function checkEndOfLine() {
                 btnRetryYes.textContent = "Повторить этот вариант";
                 btnRetryYes.onclick = function() { 
                     isForcedRepeat = true; 
-                    savedComputerMoves = computerMovesHistory.slice(); // Сохраняем путь компьютера!
+                    savedComputerMoves = computerMovesHistory.slice(); 
                     startTraining(); 
                 };
                 btnRetryNo.style.display = "none"; 
@@ -505,7 +518,12 @@ function makeComputerMove(isFirstMove) {
     var chosenOption = null;
     if (isForcedRepeat && savedComputerMoves.length > 0) {
          var expectedSan = savedComputerMoves.shift();
-         chosenOption = computerOptions.find(function(o) { return o.san === expectedSan; });
+         for (var i = 0; i < computerOptions.length; i++) {
+             if (computerOptions[i].san === expectedSan) {
+                 chosenOption = computerOptions[i];
+                 break;
+             }
+         }
     }
     
     if (!chosenOption) {
@@ -514,7 +532,11 @@ function makeComputerMove(isFirstMove) {
     
     computerMovesHistory.push(chosenOption.san);
     
-    game.move(chosenOption.san);
+    var moveRes = game.move(chosenOption.san);
+    if (!moveRes) {
+        moveRes = game.move(chosenOption.san, {sloppy: true});
+    }
+    
     board.position(game.fen(), !isFirstMove); 
     
     currentBranch = chosenOption.branch;
