@@ -13,6 +13,8 @@ var activeFileColor = 'w';
 var isForcedRepeat = false; 
 var currentDisplayComments = [];
 var fullPgnTree = [];
+var computerMovesHistory = []; 
+var savedComputerMoves = []; 
 
 var btnStart = document.getElementById('btn-start');
 var btnHint = document.getElementById('btn-hint');
@@ -223,7 +225,6 @@ function handleFileClick(fileName, colorFolder, element) {
     activeFilePath = fileName;
     activeFileColor = colorFolder;
 
-    // Жесткая очистка предыдущего дебюта, чтобы не было "призраков"
     fullPgnTree = [];
     currentBranch = [];
     currentPgnIndex = 0;
@@ -246,7 +247,6 @@ function handleFileClick(fileName, colorFolder, element) {
         if (allValidGames.length > 0) {
             fullPgnTree = allValidGames[0];
             
-            // Если в файле несколько глав, объединяем их в супер-дерево
             if (allValidGames.length > 1) {
                 if (!fullPgnTree[0].variations) fullPgnTree[0].variations = [];
                 for (var j = 1; j < allValidGames.length; j++) {
@@ -257,6 +257,7 @@ function handleFileClick(fileName, colorFolder, element) {
             statusText.textContent = 'Тренировка загружена';
             btnStart.disabled = false;
             isForcedRepeat = false;
+            savedComputerMoves = [];
             startTraining();
         } else {
             statusText.textContent = 'В файле нет ходов';
@@ -283,7 +284,6 @@ function showCommentForNode(node, append) {
     }
 }
 
-// Авто-перемотка пустых технических ходов от Lichess
 function skipDummyNodes() {
     while (currentBranch && currentPgnIndex < currentBranch.length) {
         var node = currentBranch[currentPgnIndex];
@@ -302,7 +302,11 @@ function skipDummyNodes() {
 function startTraining() {
     game.reset(); 
     board.position('start'); 
+    
+    // ЖЕСТКИЙ СБРОС ИНДЕКСА И ВЕТКИ В НАЧАЛО
+    currentBranch = fullPgnTree; 
     currentPgnIndex = 0;
+    
     errorCount = 0;
     hintCount = 0;
     updateStatsUI();
@@ -310,7 +314,10 @@ function startTraining() {
     currentDisplayComments = [];
     showCommentForNode(null, false);
     
-    if (!isForcedRepeat) { currentBranch = fullPgnTree; }
+    if (!isForcedRepeat) {
+        savedComputerMoves = []; 
+    }
+    computerMovesHistory = []; 
 
     skipDummyNodes(); 
 
@@ -428,7 +435,11 @@ function checkEndOfLine() {
                 modalTitle.style.color = "#ff6b6b";
                 modalStats.innerHTML = 'В этот раз ошибок: <b>' + errorCount + '</b> (Подсказок: ' + hintCount + ')<br><br><span style="color:#888; font-size:0.9em;">Всего ошибок в этом варианте за историю: ' + varStats.errorsTotal + '</span>';
                 btnRetryYes.textContent = "Повторить этот вариант";
-                btnRetryYes.onclick = function() { isForcedRepeat = true; startTraining(); };
+                btnRetryYes.onclick = function() { 
+                    isForcedRepeat = true; 
+                    savedComputerMoves = computerMovesHistory.slice(); // Сохраняем путь компьютера!
+                    startTraining(); 
+                };
                 btnRetryNo.style.display = "none"; 
             }
             endModal.style.display = 'flex'; 
@@ -491,12 +502,17 @@ function makeComputerMove(isFirstMove) {
         return;
     }
     
-    var chosenOption;
-    if (isForcedRepeat) {
-         chosenOption = computerOptions[0]; 
-    } else {
+    var chosenOption = null;
+    if (isForcedRepeat && savedComputerMoves.length > 0) {
+         var expectedSan = savedComputerMoves.shift();
+         chosenOption = computerOptions.find(function(o) { return o.san === expectedSan; });
+    }
+    
+    if (!chosenOption) {
          chosenOption = computerOptions[Math.floor(Math.random() * computerOptions.length)];
     }
+    
+    computerMovesHistory.push(chosenOption.san);
     
     game.move(chosenOption.san);
     board.position(game.fen(), !isFirstMove); 
