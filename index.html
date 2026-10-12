@@ -19,8 +19,8 @@
       if (d) { d.style.display = 'block'; d.innerHTML += '<p>⚠️ Файл не загружен сервером: ' + name + '</p>'; }
     }
   </script>
-  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=8" onerror="scriptErr('CSS доски')">
-  <script src="pgn-parser.js?v=8" onerror="scriptErr('pgn-parser.js')"></script>
+  <link rel="stylesheet" href="chessboard-1.0.0.min.css?v=9" onerror="scriptErr('CSS доски')">
+  <script src="pgn-parser.js?v=9" onerror="scriptErr('pgn-parser.js')"></script>
   <style>
     #sys-debug { display: none; background: #c0392b; color: white; padding: 15px; font-family: monospace; z-index: 10000; position: fixed; top: 0; left: 0; right: 0; font-size: 14px; max-height: 40vh; overflow-y: auto;}
     body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; font-family: sans-serif; overflow: hidden; }
@@ -150,10 +150,10 @@
     </div>
   </div>
   
-  <script src="jquery-3.6.0.min.js?v=8" onerror="scriptErr('jquery')"></script>
-  <script src="chessboard-1.0.0.min.js?v=8" onerror="scriptErr('chessboard')"></script>
-  <script src="chess.min.js?v=8" onerror="scriptErr('chess.js')"></script>
-  <script src="app.js?v=8" onerror="scriptErr('app.js')"></script>
+  <script src="jquery-3.6.0.min.js?v=9" onerror="scriptErr('jquery')"></script>
+  <script src="chessboard-1.0.0.min.js?v=9" onerror="scriptErr('chessboard')"></script>
+  <script src="chess.min.js?v=9" onerror="scriptErr('chess.js')"></script>
+  <script src="app.js?v=9" onerror="scriptErr('app.js')"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(err) {
