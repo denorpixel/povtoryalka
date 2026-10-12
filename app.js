@@ -504,6 +504,7 @@ function onDrop (source, target) {
     }
 }
 
+// ЗАМЕНА ВСЕХ СОВРЕМЕННЫХ ФУНКЦИЙ (.find и т.д.) НА СТАРЫЕ ЦИКЛЫ
 function makeComputerMove(isFirstMove) {
     if (currentPgnIndex >= currentBranch.length) return;
     
@@ -518,6 +519,7 @@ function makeComputerMove(isFirstMove) {
     var chosenOption = null;
     if (isForcedRepeat && savedComputerMoves.length > 0) {
          var expectedSan = savedComputerMoves.shift();
+         // Тот самый классический цикл FOR вместо глючного .find()
          for (var i = 0; i < computerOptions.length; i++) {
              if (computerOptions[i].san === expectedSan) {
                  chosenOption = computerOptions[i];
